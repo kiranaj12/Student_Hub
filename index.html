@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Student-Hub - AI-Powered Student Management</title>
     
     <!-- PWA Meta Tags -->
@@ -45,6 +45,31 @@
         @keyframes slideIn {
             from { transform: translateX(-100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* Mobile-specific fixes */
+        @media (max-width: 768px) {
+            input, select, textarea, button {
+                font-size: 16px !important; /* Prevent zoom on iOS */
+                -webkit-appearance: none;
+                border-radius: 8px;
+            }
+            
+            button {
+                min-height: 44px; /* iOS touch target size */
+                touch-action: manipulation;
+            }
+            
+            .glass-effect {
+                backdrop-filter: blur(10px);
+            }
+            
+            /* Fix for mobile form inputs */
+            input:focus, select:focus, textarea:focus {
+                outline: none;
+                border-color: #4F46E5;
+                box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+            }
         }
     </style>
 </head>
@@ -332,6 +357,9 @@
                     <button onclick="showSection('reports')" class="nav-btn bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors cursor-pointer">
                         <i class="fas fa-file-alt mr-2"></i>Reports
                     </button>
+                    <button onclick="showSection('attendanceManagement')" class="nav-btn bg-teal-600 text-white px-4 py-2 rounded-lg hover:bg-teal-700 transition-colors cursor-pointer">
+                        <i class="fas fa-calendar-check mr-2"></i>Attendance Management
+                    </button>
                     <button onclick="showSection('settings')" class="nav-btn bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors cursor-pointer">
                         <i class="fas fa-cog mr-2"></i>Settings
                     </button>
@@ -347,7 +375,10 @@
                         <i class="fas fa-graduation-cap mr-2"></i>Grades
                     </button>
                     <button onclick="showSection('attendance')" class="nav-btn bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors cursor-pointer">
-                        <i class="fas fa-calendar-check mr-2"></i>Attendance
+                        <i class="fas fa-calendar-check mr-2"></i>My Attendance
+                    </button>
+                    <button onclick="showSection('submitAttendance')" class="nav-btn bg-orange-600 text-white px-4 py-2 rounded-lg hover:bg-orange-700 transition-colors cursor-pointer">
+                        <i class="fas fa-plus-circle mr-2"></i>Submit Attendance
                     </button>
                     <button onclick="showSection('assignments')" class="nav-btn bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors cursor-pointer">
                         <i class="fas fa-tasks mr-2"></i>Assignments
@@ -584,6 +615,183 @@
             </div>
         </section>
 
+        <!-- Attendance Management Section (Admin) -->
+        <section id="attendanceManagement" class="section" style="display: none;">
+            <div class="glass-effect rounded-xl p-6 mb-6">
+                <h2 class="text-2xl font-bold text-white mb-6">
+                    <i class="fas fa-calendar-check mr-2"></i>Attendance Management
+                </h2>
+                
+                <!-- Filter Controls -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div>
+                        <label class="block text-white font-semibold mb-2">Filter by Status</label>
+                        <select id="attendanceStatusFilter" onchange="filterAttendanceRequests()" class="w-full p-3 rounded-lg bg-white/20 text-white border border-white/30">
+                            <option value="all">All Requests</option>
+                            <option value="pending">Pending</option>
+                            <option value="approved">Approved</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-white font-semibold mb-2">Filter by Department</label>
+                        <select id="attendanceDeptFilter" onchange="filterAttendanceRequests()" class="w-full p-3 rounded-lg bg-white/20 text-white border border-white/30">
+                            <option value="all">All Departments</option>
+                            <option value="CSE">CSE</option>
+                            <option value="EC">EC</option>
+                            <option value="ME">ME</option>
+                            <option value="CE">CE</option>
+                            <option value="EE">EE</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-white font-semibold mb-2">From Date</label>
+                        <input type="date" id="attendanceFromDate" onchange="filterAttendanceRequests()" class="w-full p-3 rounded-lg bg-white/20 text-white border border-white/30">
+                    </div>
+                    <div>
+                        <label class="block text-white font-semibold mb-2">To Date</label>
+                        <input type="date" id="attendanceToDate" onchange="filterAttendanceRequests()" class="w-full p-3 rounded-lg bg-white/20 text-white border border-white/30">
+                    </div>
+                </div>
+
+                <!-- Statistics Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div class="glass-effect rounded-xl p-6 text-center">
+                        <i class="fas fa-clock text-3xl mb-3 text-yellow-300"></i>
+                        <h3 class="text-2xl font-bold text-white" id="pendingRequests">0</h3>
+                        <p class="text-gray-300">Pending Requests</p>
+                    </div>
+                    <div class="glass-effect rounded-xl p-6 text-center">
+                        <i class="fas fa-check-circle text-3xl mb-3 text-green-300"></i>
+                        <h3 class="text-2xl font-bold text-white" id="approvedRequests">0</h3>
+                        <p class="text-gray-300">Approved Today</p>
+                    </div>
+                    <div class="glass-effect rounded-xl p-6 text-center">
+                        <i class="fas fa-times-circle text-3xl mb-3 text-red-300"></i>
+                        <h3 class="text-2xl font-bold text-white" id="rejectedRequests">0</h3>
+                        <p class="text-gray-300">Rejected Today</p>
+                    </div>
+                    <div class="glass-effect rounded-xl p-6 text-center">
+                        <i class="fas fa-calendar-day text-3xl mb-3 text-blue-300"></i>
+                        <h3 class="text-2xl font-bold text-white" id="totalRequests">0</h3>
+                        <p class="text-gray-300">Total Requests</p>
+                    </div>
+                </div>
+
+                <!-- Attendance Requests Table -->
+                <div class="glass-effect rounded-xl p-6">
+                    <h3 class="text-xl font-bold text-white mb-4">Attendance Requests</h3>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-white">
+                            <thead>
+                                <tr class="border-b border-white/30">
+                                    <th class="text-left p-3">Student</th>
+                                    <th class="text-left p-3">Department</th>
+                                    <th class="text-left p-3">Date</th>
+                                    <th class="text-left p-3">Subject</th>
+                                    <th class="text-left p-3">Reason</th>
+                                    <th class="text-left p-3">Status</th>
+                                    <th class="text-left p-3">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceRequestsTable">
+                                <!-- Attendance requests will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Submit Attendance Section (Student) -->
+        <section id="submitAttendance" class="section" style="display: none;">
+            <div class="glass-effect rounded-xl p-8 max-w-2xl mx-auto">
+                <h2 class="text-2xl font-bold text-white mb-6 text-center">
+                    <i class="fas fa-plus-circle mr-2"></i>Submit Attendance Request
+                </h2>
+                
+                <form id="attendanceForm" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Date *</label>
+                            <input type="date" id="attendanceDate" required class="w-full p-3 rounded-lg bg-white/20 text-white border border-white/30 focus:border-blue-400 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Subject *</label>
+                            <select id="attendanceSubject" required class="w-full p-3 rounded-lg bg-white/20 text-white border border-white/30 focus:border-blue-400 focus:outline-none">
+                                <option value="">Select Subject</option>
+                                <option value="Data Structures">Data Structures</option>
+                                <option value="Computer Networks">Computer Networks</option>
+                                <option value="Database Systems">Database Systems</option>
+                                <option value="Software Engineering">Software Engineering</option>
+                                <option value="Web Technologies">Web Technologies</option>
+                                <option value="Operating Systems">Operating Systems</option>
+                                <option value="Computer Graphics">Computer Graphics</option>
+                                <option value="Artificial Intelligence">Artificial Intelligence</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Session Type *</label>
+                            <select id="sessionType" required class="w-full p-3 rounded-lg bg-white/20 text-white border border-white/30 focus:border-blue-400 focus:outline-none">
+                                <option value="">Select Session</option>
+                                <option value="Theory">Theory Class</option>
+                                <option value="Practical">Practical/Lab</option>
+                                <option value="Tutorial">Tutorial</option>
+                                <option value="Seminar">Seminar</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-white font-semibold mb-2">Time Slot *</label>
+                            <select id="timeSlot" required class="w-full p-3 rounded-lg bg-white/20 text-white border border-white/30 focus:border-blue-400 focus:outline-none">
+                                <option value="">Select Time</option>
+                                <option value="09:00-10:00">09:00 - 10:00 AM</option>
+                                <option value="10:00-11:00">10:00 - 11:00 AM</option>
+                                <option value="11:00-12:00">11:00 - 12:00 PM</option>
+                                <option value="12:00-13:00">12:00 - 01:00 PM</option>
+                                <option value="14:00-15:00">02:00 - 03:00 PM</option>
+                                <option value="15:00-16:00">03:00 - 04:00 PM</option>
+                                <option value="16:00-17:00">04:00 - 05:00 PM</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-white font-semibold mb-2">Reason for Late Submission</label>
+                        <textarea id="attendanceReason" rows="4" class="w-full p-3 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/30 focus:border-blue-400 focus:outline-none" placeholder="Please explain why you're submitting this attendance request (e.g., forgot to mark, technical issues, etc.)"></textarea>
+                    </div>
+
+                    <div class="bg-blue-600/20 rounded-lg p-4 border border-blue-400/30">
+                        <h4 class="text-blue-300 font-semibold mb-2">
+                            <i class="fas fa-info-circle mr-2"></i>Important Notes:
+                        </h4>
+                        <ul class="text-blue-200 text-sm space-y-1">
+                            <li>• You can only submit attendance for past 7 days</li>
+                            <li>• All requests require admin approval</li>
+                            <li>• Provide a valid reason for late submission</li>
+                            <li>• False attendance requests may result in disciplinary action</li>
+                        </ul>
+                    </div>
+
+                    <button type="submit" class="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all ai-glow">
+                        <i class="fas fa-paper-plane mr-2"></i>Submit Attendance Request
+                    </button>
+                </form>
+
+                <!-- My Attendance Requests -->
+                <div class="mt-8 glass-effect rounded-xl p-6">
+                    <h3 class="text-xl font-bold text-white mb-4">
+                        <i class="fas fa-list mr-2"></i>My Recent Requests
+                    </h3>
+                    <div id="myAttendanceRequests" class="space-y-3">
+                        <!-- Student's attendance requests will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Settings Section -->
         <section id="settings" class="section" style="display: none;">
             <div class="glass-effect rounded-xl p-6">
@@ -765,6 +973,7 @@
         // Global Variables
         let students = [];
         let users = [];
+        let attendanceRequests = [];
         let currentUser = null;
         let currentSection = 'dashboard';
         let deferredPrompt;
@@ -784,13 +993,73 @@
             
             // Check if user is already logged in
             loadCurrentUser();
+            
+            // Add mobile-specific event handlers
+            setupMobileEventHandlers();
         });
+
+        // Mobile-specific event handlers
+        function setupMobileEventHandlers() {
+            console.log('Setting up mobile event handlers...');
+            
+            // Add touch event support for buttons
+            document.addEventListener('touchstart', function() {}, {passive: true});
+            
+            // Prevent zoom on double tap for form inputs
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', function (event) {
+                const now = (new Date()).getTime();
+                if (now - lastTouchEnd <= 300) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
+            
+            // Add specific handlers for auth buttons
+            setTimeout(() => {
+                // Sign in button handlers
+                const signinButtons = document.querySelectorAll('button[onclick*="signin"]');
+                signinButtons.forEach(btn => {
+                    btn.addEventListener('touchend', function(e) {
+                        e.preventDefault();
+                        showAuthForm('signin');
+                    });
+                });
+                
+                // Sign up button handlers
+                const signupButtons = document.querySelectorAll('button[onclick*="signup"]');
+                signupButtons.forEach(btn => {
+                    btn.addEventListener('touchend', function(e) {
+                        e.preventDefault();
+                        showAuthForm('signup');
+                    });
+                });
+                
+                // Form submission button handlers
+                const loginSubmitBtn = document.querySelector('#loginForm button[type="submit"]');
+                if (loginSubmitBtn) {
+                    loginSubmitBtn.addEventListener('touchend', function(e) {
+                        e.preventDefault();
+                        setTimeout(() => handleLogin(), 100);
+                    });
+                }
+                
+                const registerSubmitBtn = document.querySelector('#registerForm button[type="submit"]');
+                if (registerSubmitBtn) {
+                    registerSubmitBtn.addEventListener('touchend', function(e) {
+                        e.preventDefault();
+                        setTimeout(() => handleRegister(), 100);
+                    });
+                }
+            }, 500);
+        }
 
         // Initialize sample data
         function initializeSampleData() {
             // Load from localStorage or create sample data
             const savedUsers = localStorage.getItem('users');
             const savedStudents = localStorage.getItem('students');
+            const savedAttendanceRequests = localStorage.getItem('attendanceRequests');
             
             if (savedUsers) {
                 users = JSON.parse(savedUsers);
@@ -841,29 +1110,432 @@
                 }];
                 localStorage.setItem('students', JSON.stringify(students));
             }
+
+            if (savedAttendanceRequests) {
+                attendanceRequests = JSON.parse(savedAttendanceRequests);
+            } else {
+                // Create sample attendance requests
+                attendanceRequests = [
+                    {
+                        id: 1,
+                        studentId: 2,
+                        studentName: "Rahul Kumar",
+                        department: "CSE",
+                        date: "2024-01-15",
+                        subject: "Data Structures",
+                        sessionType: "Theory",
+                        timeSlot: "10:00-11:00",
+                        reason: "Forgot to mark attendance during class",
+                        status: "pending",
+                        submittedAt: new Date().toISOString(),
+                        reviewedBy: null,
+                        reviewedAt: null,
+                        adminComments: ""
+                    },
+                    {
+                        id: 2,
+                        studentId: 2,
+                        studentName: "Rahul Kumar",
+                        department: "CSE",
+                        date: "2024-01-14",
+                        subject: "Computer Networks",
+                        sessionType: "Practical",
+                        timeSlot: "14:00-15:00",
+                        reason: "Technical issue with attendance system",
+                        status: "approved",
+                        submittedAt: new Date(Date.now() - 86400000).toISOString(),
+                        reviewedBy: "System Administrator",
+                        reviewedAt: new Date().toISOString(),
+                        adminComments: "Valid reason, approved"
+                    }
+                ];
+                localStorage.setItem('attendanceRequests', JSON.stringify(attendanceRequests));
+            }
             
-            console.log('Sample data initialized:', { users: users.length, students: students.length });
+            console.log('Sample data initialized:', { 
+                users: users.length, 
+                students: students.length, 
+                attendanceRequests: attendanceRequests.length 
+            });
+        }
+
+        // Attendance Management Functions
+        function handleAttendanceSubmission(e) {
+            e.preventDefault();
+            
+            const formData = {
+                id: Date.now(),
+                studentId: currentUser.id,
+                studentName: currentUser.fullName,
+                department: students.find(s => s.username === currentUser.username)?.department || 'Unknown',
+                date: document.getElementById('attendanceDate').value,
+                subject: document.getElementById('attendanceSubject').value,
+                sessionType: document.getElementById('sessionType').value,
+                timeSlot: document.getElementById('timeSlot').value,
+                reason: document.getElementById('attendanceReason').value.trim(),
+                status: 'pending',
+                submittedAt: new Date().toISOString(),
+                reviewedBy: null,
+                reviewedAt: null,
+                adminComments: ""
+            };
+
+            // Validation
+            if (!validateAttendanceRequest(formData)) return;
+
+            // Check if request already exists for same date and subject
+            const existingRequest = attendanceRequests.find(req => 
+                req.studentId === formData.studentId && 
+                req.date === formData.date && 
+                req.subject === formData.subject &&
+                req.timeSlot === formData.timeSlot
+            );
+
+            if (existingRequest) {
+                showMessage('You have already submitted a request for this date, subject, and time slot!', 'error');
+                return;
+            }
+
+            attendanceRequests.push(formData);
+            localStorage.setItem('attendanceRequests', JSON.stringify(attendanceRequests));
+            
+            showMessage('Attendance request submitted successfully! Waiting for admin approval.', 'success');
+            document.getElementById('attendanceForm').reset();
+            loadMyAttendanceRequests();
+        }
+
+        function validateAttendanceRequest(data) {
+            const selectedDate = new Date(data.date);
+            const today = new Date();
+            const sevenDaysAgo = new Date(today.getTime() - (7 * 24 * 60 * 60 * 1000));
+
+            if (selectedDate > today) {
+                showMessage('Cannot submit attendance for future dates!', 'error');
+                return false;
+            }
+
+            if (selectedDate < sevenDaysAgo) {
+                showMessage('Cannot submit attendance for dates older than 7 days!', 'error');
+                return false;
+            }
+
+            if (!data.date || !data.subject || !data.sessionType || !data.timeSlot) {
+                showMessage('Please fill all required fields!', 'error');
+                return false;
+            }
+
+            if (!data.reason || data.reason.length < 10) {
+                showMessage('Please provide a detailed reason (minimum 10 characters)!', 'error');
+                return false;
+            }
+
+            return true;
+        }
+
+        function loadAttendanceManagement() {
+            updateAttendanceStats();
+            displayAttendanceRequests();
+        }
+
+        function updateAttendanceStats() {
+            const today = new Date().toDateString();
+            const pending = attendanceRequests.filter(req => req.status === 'pending').length;
+            const approvedToday = attendanceRequests.filter(req => 
+                req.status === 'approved' && 
+                new Date(req.reviewedAt).toDateString() === today
+            ).length;
+            const rejectedToday = attendanceRequests.filter(req => 
+                req.status === 'rejected' && 
+                new Date(req.reviewedAt).toDateString() === today
+            ).length;
+            const total = attendanceRequests.length;
+
+            document.getElementById('pendingRequests').textContent = pending;
+            document.getElementById('approvedRequests').textContent = approvedToday;
+            document.getElementById('rejectedRequests').textContent = rejectedToday;
+            document.getElementById('totalRequests').textContent = total;
+        }
+
+        function displayAttendanceRequests() {
+            const tbody = document.getElementById('attendanceRequestsTable');
+            let filteredRequests = [...attendanceRequests];
+
+            // Apply filters
+            const statusFilter = document.getElementById('attendanceStatusFilter')?.value || 'all';
+            const deptFilter = document.getElementById('attendanceDeptFilter')?.value || 'all';
+            const fromDate = document.getElementById('attendanceFromDate')?.value;
+            const toDate = document.getElementById('attendanceToDate')?.value;
+
+            if (statusFilter !== 'all') {
+                filteredRequests = filteredRequests.filter(req => req.status === statusFilter);
+            }
+
+            if (deptFilter !== 'all') {
+                filteredRequests = filteredRequests.filter(req => req.department === deptFilter);
+            }
+
+            if (fromDate) {
+                filteredRequests = filteredRequests.filter(req => req.date >= fromDate);
+            }
+
+            if (toDate) {
+                filteredRequests = filteredRequests.filter(req => req.date <= toDate);
+            }
+
+            // Sort by submission date (newest first)
+            filteredRequests.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+
+            const statusColors = {
+                pending: 'bg-yellow-600',
+                approved: 'bg-green-600',
+                rejected: 'bg-red-600'
+            };
+
+            tbody.innerHTML = filteredRequests.map(request => `
+                <tr class="border-b border-white/20 hover:bg-white/10 transition-colors">
+                    <td class="p-3">
+                        <div class="font-semibold">${request.studentName}</div>
+                        <div class="text-sm text-gray-300">ID: ${request.studentId}</div>
+                    </td>
+                    <td class="p-3">${request.department}</td>
+                    <td class="p-3">
+                        <div>${request.date}</div>
+                        <div class="text-sm text-gray-300">${request.timeSlot}</div>
+                    </td>
+                    <td class="p-3">
+                        <div>${request.subject}</div>
+                        <div class="text-sm text-gray-300">${request.sessionType}</div>
+                    </td>
+                    <td class="p-3">
+                        <div class="max-w-xs truncate" title="${request.reason}">
+                            ${request.reason}
+                        </div>
+                    </td>
+                    <td class="p-3">
+                        <span class="px-2 py-1 rounded text-white text-sm ${statusColors[request.status]}">
+                            ${request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                        </span>
+                        ${request.reviewedBy ? `<div class="text-xs text-gray-300 mt-1">By: ${request.reviewedBy}</div>` : ''}
+                    </td>
+                    <td class="p-3">
+                        ${request.status === 'pending' ? `
+                            <div class="flex space-x-2">
+                                <button onclick="reviewAttendanceRequest(${request.id}, 'approved')" 
+                                        class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 transition-colors">
+                                    <i class="fas fa-check"></i>
+                                </button>
+                                <button onclick="reviewAttendanceRequest(${request.id}, 'rejected')" 
+                                        class="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <button onclick="showAttendanceDetails(${request.id})" 
+                                        class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        ` : `
+                            <div class="flex space-x-2">
+                                <button onclick="showAttendanceDetails(${request.id})" 
+                                        class="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                ${request.status !== 'pending' ? `
+                                    <button onclick="revertAttendanceRequest(${request.id})" 
+                                            class="bg-orange-600 text-white px-3 py-1 rounded text-sm hover:bg-orange-700 transition-colors">
+                                        <i class="fas fa-undo"></i>
+                                    </button>
+                                ` : ''}
+                            </div>
+                        `}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function reviewAttendanceRequest(requestId, action) {
+            const request = attendanceRequests.find(req => req.id === requestId);
+            if (!request) return;
+
+            const comments = prompt(`Please provide comments for ${action} this request:`);
+            if (comments === null) return; // User cancelled
+
+            request.status = action;
+            request.reviewedBy = currentUser.fullName;
+            request.reviewedAt = new Date().toISOString();
+            request.adminComments = comments || `Request ${action} by admin`;
+
+            localStorage.setItem('attendanceRequests', JSON.stringify(attendanceRequests));
+            
+            showMessage(`Attendance request ${action} successfully!`, 'success');
+            loadAttendanceManagement();
+        }
+
+        function revertAttendanceRequest(requestId) {
+            if (!confirm('Are you sure you want to revert this request back to pending?')) return;
+
+            const request = attendanceRequests.find(req => req.id === requestId);
+            if (!request) return;
+
+            request.status = 'pending';
+            request.reviewedBy = null;
+            request.reviewedAt = null;
+            request.adminComments = '';
+
+            localStorage.setItem('attendanceRequests', JSON.stringify(attendanceRequests));
+            
+            showMessage('Attendance request reverted to pending status!', 'success');
+            loadAttendanceManagement();
+        }
+
+        function showAttendanceDetails(requestId) {
+            const request = attendanceRequests.find(req => req.id === requestId);
+            if (!request) return;
+
+            const details = `
+                Student: ${request.studentName} (${request.department})
+                Date: ${request.date}
+                Subject: ${request.subject}
+                Session: ${request.sessionType}
+                Time: ${request.timeSlot}
+                Reason: ${request.reason}
+                Status: ${request.status.toUpperCase()}
+                Submitted: ${new Date(request.submittedAt).toLocaleString()}
+                ${request.reviewedBy ? `Reviewed by: ${request.reviewedBy}` : ''}
+                ${request.reviewedAt ? `Reviewed at: ${new Date(request.reviewedAt).toLocaleString()}` : ''}
+                ${request.adminComments ? `Admin Comments: ${request.adminComments}` : ''}
+            `;
+
+            alert(details);
+        }
+
+        function filterAttendanceRequests() {
+            displayAttendanceRequests();
+        }
+
+        function loadSubmitAttendance() {
+            // Set max date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('attendanceDate').max = today;
+            
+            // Set min date to 7 days ago
+            const sevenDaysAgo = new Date(Date.now() - (7 * 24 * 60 * 60 * 1000)).toISOString().split('T')[0];
+            document.getElementById('attendanceDate').min = sevenDaysAgo;
+
+            loadMyAttendanceRequests();
+        }
+
+        function loadMyAttendanceRequests() {
+            if (currentUser.accountType !== 'student') return;
+
+            const myRequests = attendanceRequests
+                .filter(req => req.studentId === currentUser.id)
+                .sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt))
+                .slice(0, 5); // Show only last 5 requests
+
+            const statusColors = {
+                pending: 'bg-yellow-600',
+                approved: 'bg-green-600',
+                rejected: 'bg-red-600'
+            };
+
+            const statusIcons = {
+                pending: 'fas fa-clock',
+                approved: 'fas fa-check-circle',
+                rejected: 'fas fa-times-circle'
+            };
+
+            const requestsHTML = myRequests.map(request => `
+                <div class="glass-effect rounded-xl p-4 flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center space-x-3 mb-2">
+                            <i class="${statusIcons[request.status]} text-lg ${
+                                request.status === 'pending' ? 'text-yellow-300' :
+                                request.status === 'approved' ? 'text-green-300' : 'text-red-300'
+                            }"></i>
+                            <div>
+                                <h4 class="text-white font-semibold">${request.subject}</h4>
+                                <p class="text-gray-300 text-sm">${request.date} • ${request.timeSlot}</p>
+                            </div>
+                        </div>
+                        <p class="text-gray-400 text-sm mb-2">${request.reason}</p>
+                        <div class="flex items-center justify-between">
+                            <span class="px-2 py-1 rounded text-white text-xs ${statusColors[request.status]}">
+                                ${request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                            </span>
+                            <span class="text-gray-400 text-xs">
+                                ${new Date(request.submittedAt).toLocaleDateString()}
+                            </span>
+                        </div>
+                        ${request.adminComments ? `
+                            <div class="mt-2 p-2 bg-blue-600/20 rounded border border-blue-400/30">
+                                <p class="text-blue-200 text-sm">
+                                    <i class="fas fa-comment mr-1"></i>
+                                    Admin: ${request.adminComments}
+                                </p>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('myAttendanceRequests').innerHTML = requestsHTML || 
+                '<p class="text-gray-400 text-center py-4">No attendance requests found.</p>';
         }
 
         // Setup event listeners
         function setupEventListeners() {
-            // Login form
-            const loginForm = document.getElementById('loginForm');
-            if (loginForm) {
-                loginForm.addEventListener('submit', handleLogin);
-            }
+            console.log('Setting up event listeners...');
+            
+            // Wait for DOM to be fully loaded
+            setTimeout(() => {
+                // Login form
+                const loginForm = document.getElementById('loginForm');
+                if (loginForm) {
+                    console.log('Login form found, adding listener');
+                    loginForm.addEventListener('submit', handleLogin);
+                    
+                    // Also add click handler for mobile
+                    const loginBtn = loginForm.querySelector('button[type="submit"]');
+                    if (loginBtn) {
+                        loginBtn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            handleLogin(e);
+                        });
+                    }
+                } else {
+                    console.log('Login form not found');
+                }
 
-            // Register form
-            const registerForm = document.getElementById('registerForm');
-            if (registerForm) {
-                registerForm.addEventListener('submit', handleRegister);
-            }
+                // Register form
+                const registerForm = document.getElementById('registerForm');
+                if (registerForm) {
+                    console.log('Register form found, adding listener');
+                    registerForm.addEventListener('submit', handleRegister);
+                    
+                    // Also add click handler for mobile
+                    const registerBtn = registerForm.querySelector('button[type="submit"]');
+                    if (registerBtn) {
+                        registerBtn.addEventListener('click', function(e) {
+                            e.preventDefault();
+                            handleRegister(e);
+                        });
+                    }
+                } else {
+                    console.log('Register form not found');
+                }
 
-            // Student form
-            const studentForm = document.getElementById('studentForm');
-            if (studentForm) {
-                studentForm.addEventListener('submit', handleAddStudent);
-            }
+                // Student form
+                const studentForm = document.getElementById('studentForm');
+                if (studentForm) {
+                    studentForm.addEventListener('submit', handleAddStudent);
+                }
+
+                // Attendance form
+                const attendanceForm = document.getElementById('attendanceForm');
+                if (attendanceForm) {
+                    attendanceForm.addEventListener('submit', handleAttendanceSubmission);
+                }
+            }, 100);
         }
 
         // Authentication Functions
@@ -903,11 +1575,20 @@
         }
 
         function handleLogin(e) {
-            e.preventDefault();
+            if (e) e.preventDefault();
             console.log('Login form submitted');
             
-            const username = document.getElementById('loginId').value.trim();
-            const password = document.getElementById('loginPassword').value;
+            const usernameField = document.getElementById('loginId');
+            const passwordField = document.getElementById('loginPassword');
+            
+            if (!usernameField || !passwordField) {
+                console.error('Login form fields not found');
+                showMessage('Login form error. Please refresh the page.', 'error');
+                return;
+            }
+            
+            const username = usernameField.value.trim();
+            const password = passwordField.value;
             
             console.log('Login attempt:', username);
             
@@ -932,34 +1613,62 @@
                 updateUserInterface();
                 
                 showMessage(`Welcome back, ${user.fullName}!`, 'success');
+                
+                // Clear form
+                usernameField.value = '';
+                passwordField.value = '';
             } else {
                 showMessage('Invalid username or password!', 'error');
             }
         }
 
         function handleRegister(e) {
-            e.preventDefault();
+            if (e) e.preventDefault();
             console.log('Register form submitted');
+            
+            // Get form elements with error checking
+            const accountTypeField = document.getElementById('accountType');
+            const fullNameField = document.getElementById('regFullName');
+            const usernameField = document.getElementById('regNumber');
+            const emailField = document.getElementById('regEmail');
+            const phoneField = document.getElementById('regPhone');
+            const passwordField = document.getElementById('regPassword');
+            const confirmPasswordField = document.getElementById('regConfirmPassword');
+            
+            if (!accountTypeField || !fullNameField || !usernameField || !emailField || !passwordField || !confirmPasswordField) {
+                console.error('Registration form fields not found');
+                showMessage('Registration form error. Please refresh the page.', 'error');
+                return;
+            }
             
             const formData = {
                 id: Date.now(),
-                accountType: document.getElementById('accountType').value,
-                fullName: document.getElementById('regFullName').value.trim(),
-                username: document.getElementById('regNumber').value.trim(),
-                email: document.getElementById('regEmail').value.trim(),
-                phone: document.getElementById('regPhone').value.trim(),
-                password: document.getElementById('regPassword').value,
-                confirmPassword: document.getElementById('regConfirmPassword').value,
+                accountType: accountTypeField.value,
+                fullName: fullNameField.value.trim(),
+                username: usernameField.value.trim(),
+                email: emailField.value.trim(),
+                phone: phoneField ? phoneField.value.trim() : '',
+                password: passwordField.value,
+                confirmPassword: confirmPasswordField.value,
                 dateCreated: new Date().toISOString()
             };
 
             // Add type-specific fields
             if (formData.accountType === 'student') {
-                formData.department = document.getElementById('regDepartment').value;
-                formData.year = document.getElementById('regYear').value;
-                formData.semester = document.getElementById('regSemester').value;
+                const deptField = document.getElementById('regDepartment');
+                const yearField = document.getElementById('regYear');
+                const semesterField = document.getElementById('regSemester');
+                
+                if (deptField && yearField && semesterField) {
+                    formData.department = deptField.value;
+                    formData.year = yearField.value;
+                    formData.semester = semesterField.value;
+                }
             } else if (formData.accountType === 'admin') {
-                formData.role = document.getElementById('regRole').value;
+                const roleField = document.getElementById('regRole');
+                if (roleField) {
+                    formData.role = roleField.value;
+                }
             }
 
             // Validation
@@ -998,7 +1707,12 @@
             
             showMessage('Account created successfully! Please sign in.', 'success');
             showAuthForm('signin');
-            document.getElementById('registerForm').reset();
+            
+            // Clear form
+            const registerForm = document.getElementById('registerForm');
+            if (registerForm) {
+                registerForm.reset();
+            }
         }
 
         function validateRegistration(data) {
@@ -1140,6 +1854,10 @@
                 loadStudentAssignments();
             } else if (section === 'notifications') {
                 loadNotifications();
+            } else if (section === 'attendanceManagement') {
+                loadAttendanceManagement();
+            } else if (section === 'submitAttendance') {
+                loadSubmitAttendance();
             }
         }
 
@@ -1732,5 +2450,5 @@
 
         console.log('Student-Hub loaded successfully!');
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97a7362f61fa3d25',t:'MTc1NzA5MDg4MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97ae5fbeb453851f',t:'MTc1NzE2NTk4Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
