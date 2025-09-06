@@ -1590,20 +1590,23 @@
             const username = usernameField.value.trim();
             const password = passwordField.value;
             
-            console.log('Login attempt:', username);
+            console.log('Login attempt for username:', username);
+            console.log('Available users:', users.map(u => ({ username: u.username, type: u.accountType })));
             
             if (!username || !password) {
                 showMessage('Please enter both username and password', 'error');
                 return;
             }
             
-            // Find user
+            // Find user in users array (works for both admin and student)
             const user = users.find(u => u.username === username && u.password === password);
-            console.log('User found:', user ? 'Yes' : 'No');
+            console.log('User found:', user ? `Yes - ${user.accountType}` : 'No');
             
             if (user) {
                 currentUser = user;
                 localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                
+                console.log('Login successful for:', user.fullName, 'Type:', user.accountType);
                 
                 // Show main app
                 document.getElementById('authSection').style.display = 'none';
@@ -1618,6 +1621,7 @@
                 usernameField.value = '';
                 passwordField.value = '';
             } else {
+                console.log('Login failed - invalid credentials');
                 showMessage('Invalid username or password!', 'error');
             }
         }
@@ -1653,6 +1657,8 @@
                 dateCreated: new Date().toISOString()
             };
 
+            console.log('Registration attempt for:', formData.username, 'Type:', formData.accountType);
+
             // Add type-specific fields
             if (formData.accountType === 'student') {
                 const deptField = document.getElementById('regDepartment');
@@ -1664,11 +1670,13 @@
                     formData.year = yearField.value;
                     formData.semester = semesterField.value;
                 }
+                console.log('Student fields:', { dept: formData.department, year: formData.year, semester: formData.semester });
             } else if (formData.accountType === 'admin') {
                 const roleField = document.getElementById('regRole');
                 if (roleField) {
                     formData.role = roleField.value;
                 }
+                console.log('Admin role:', formData.role);
             }
 
             // Validation
@@ -1680,11 +1688,19 @@
                 return;
             }
 
+            // Check for duplicate email
+            if (users.some(u => u.email === formData.email)) {
+                showMessage('Email already exists!', 'error');
+                return;
+            }
+
             // Remove confirm password before saving
             delete formData.confirmPassword;
 
+            // Add user to users array
             users.push(formData);
             localStorage.setItem('users', JSON.stringify(users));
+            console.log('User added to users array. Total users:', users.length);
             
             // If student, also add to students array
             if (formData.accountType === 'student') {
@@ -1703,31 +1719,46 @@
                 };
                 students.push(studentData);
                 localStorage.setItem('students', JSON.stringify(students));
+                console.log('Student added to students array. Total students:', students.length);
+                console.log('New student data:', studentData);
             }
             
-            showMessage('Account created successfully! Please sign in.', 'success');
+            showMessage('Account created successfully! You can now sign in with your credentials.', 'success');
             showAuthForm('signin');
             
             // Clear form
             const registerForm = document.getElementById('registerForm');
             if (registerForm) {
                 registerForm.reset();
+                // Also hide the conditional fields
+                document.getElementById('studentFields').style.display = 'none';
+                document.getElementById('adminFields').style.display = 'none';
             }
+            
+            console.log('Registration completed successfully');
         }
 
         function validateRegistration(data) {
+            console.log('Validating registration data:', data);
+            
             if (!data.accountType) {
                 showMessage('Please select an account type', 'error');
                 return false;
             }
             
             if (!data.fullName || data.fullName.length < 2) {
-                showMessage('Please enter a valid full name', 'error');
+                showMessage('Please enter a valid full name (minimum 2 characters)', 'error');
                 return false;
             }
             
             if (!data.username || data.username.length < 3) {
-                showMessage('Please enter a valid username', 'error');
+                showMessage('Please enter a valid username (minimum 3 characters)', 'error');
+                return false;
+            }
+            
+            // Check username format (no spaces, special characters except underscore)
+            if (!/^[a-zA-Z0-9_]+$/.test(data.username)) {
+                showMessage('Username can only contain letters, numbers, and underscores', 'error');
                 return false;
             }
             
@@ -1748,18 +1779,22 @@
             
             if (data.accountType === 'student') {
                 if (!data.department || !data.year || !data.semester) {
-                    showMessage('Please fill all student fields', 'error');
+                    showMessage('Please fill all required student fields (Department, Year, Semester)', 'error');
+                    console.log('Student validation failed:', { dept: data.department, year: data.year, semester: data.semester });
                     return false;
                 }
+                console.log('Student validation passed');
             }
             
             if (data.accountType === 'admin') {
                 if (!data.role) {
-                    showMessage('Please select a role type', 'error');
+                    showMessage('Please select a role type for admin account', 'error');
                     return false;
                 }
+                console.log('Admin validation passed');
             }
             
+            console.log('All validation checks passed');
             return true;
         }
 
@@ -1784,21 +1819,30 @@
         }
 
         function updateUserInterface() {
-            if (!currentUser) return;
+            if (!currentUser) {
+                console.error('No current user found');
+                return;
+            }
+            
+            console.log('Updating UI for user:', currentUser.fullName, 'Type:', currentUser.accountType);
             
             document.getElementById('userWelcome').textContent = `Welcome, ${currentUser.fullName}!`;
             document.getElementById('userRole').textContent = currentUser.accountType === 'admin' ? 'Administrator' : 'Student';
             
             if (currentUser.accountType === 'admin') {
+                console.log('Setting up admin interface');
                 document.getElementById('adminNav').style.display = 'flex';
                 document.getElementById('studentNav').style.display = 'none';
                 showSection('dashboard');
                 updateDashboard();
-            } else {
+            } else if (currentUser.accountType === 'student') {
+                console.log('Setting up student interface');
                 document.getElementById('adminNav').style.display = 'none';
                 document.getElementById('studentNav').style.display = 'flex';
                 showSection('studentDashboard');
                 updateStudentDashboard();
+            } else {
+                console.error('Unknown account type:', currentUser.accountType);
             }
         }
 
@@ -1942,13 +1986,26 @@
         }
 
         function updateStudentDashboard() {
-            if (currentUser.accountType !== 'student') return;
+            if (currentUser.accountType !== 'student') {
+                console.log('Not a student user, skipping student dashboard update');
+                return;
+            }
+            
+            console.log('Updating student dashboard for:', currentUser.username);
+            console.log('Available students:', students.map(s => s.username));
             
             const student = students.find(s => s.username === currentUser.username);
             if (student) {
-                document.getElementById('dashboardWelcome').textContent = `Welcome, ${student.fullName}!`;
+                console.log('Student found:', student);
+                document.getElementById('dashboardWelcome').textContent = `Welcome back, ${student.fullName}!`;
                 document.getElementById('dashboardStudentInfo').textContent = 
-                    `${student.department} - Year ${student.year}, Semester ${student.semester}`;
+                    `${student.department} Department - Year ${student.year}, Semester ${student.semester} | Student ID: ${student.studentId}`;
+            } else {
+                console.log('Student not found in students array');
+                // Fallback to user data
+                document.getElementById('dashboardWelcome').textContent = `Welcome back, ${currentUser.fullName}!`;
+                document.getElementById('dashboardStudentInfo').textContent = 
+                    `${currentUser.department || 'Unknown'} Department - Year ${currentUser.year || 'N/A'}`;
             }
         }
 
@@ -2450,5 +2507,5 @@
 
         console.log('Student-Hub loaded successfully!');
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97ae5fbeb453851f',t:'MTc1NzE2NTk4Mi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97ae706257db851f',t:'MTc1NzE2NjY2NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
