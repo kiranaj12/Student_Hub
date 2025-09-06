@@ -1592,7 +1592,7 @@
                 return;
             }
             
-            const username = usernameField.value.trim().toLowerCase(); // Normalize for comparison
+            const username = usernameField.value.trim(); // Keep original case like admin system
             const password = passwordField.value;
             
             console.log('Login attempt for username:', username);
@@ -1603,8 +1603,8 @@
                 return;
             }
             
-            // Find user in users array (case-insensitive username comparison)
-            const user = users.find(u => u.username.toLowerCase() === username && u.password === password);
+            // Find user in users array (exact match like admin system)
+            const user = users.find(u => u.username === username && u.password === password);
             console.log('User found:', user ? `Yes - ${user.accountType}` : 'No');
             
             if (user) {
@@ -1628,9 +1628,9 @@
             } else {
                 console.log('Login failed - invalid credentials for username:', username);
                 console.log('Checking all users for debug:', users.map(u => ({ 
-                    stored: u.username.toLowerCase(), 
+                    stored: u.username, 
                     entered: username, 
-                    match: u.username.toLowerCase() === username,
+                    match: u.username === username,
                     passwordMatch: u.password === password
                 })));
                 showMessage('Invalid username or password! Please check your credentials.', 'error');
@@ -1660,8 +1660,8 @@
                 id: Date.now(),
                 accountType: accountTypeField.value,
                 fullName: fullNameField.value.trim(),
-                username: usernameField.value.trim().toLowerCase(), // Normalize username
-                email: emailField.value.trim().toLowerCase(), // Normalize email
+                username: usernameField.value.trim(), // Keep original case for username
+                email: emailField.value.trim().toLowerCase(), // Normalize email only
                 phone: phoneField ? phoneField.value.trim() : '',
                 password: passwordField.value,
                 confirmPassword: confirmPasswordField.value,
@@ -1694,8 +1694,8 @@
             // Validation
             if (!validateRegistration(formData)) return;
 
-            // Check for duplicate username (case-insensitive)
-            const existingUsername = users.find(u => u.username.toLowerCase() === formData.username.toLowerCase());
+            // Check for duplicate username (exact match like admin system)
+            const existingUsername = users.find(u => u.username === formData.username);
             if (existingUsername) {
                 console.log('Username conflict found:', existingUsername.username);
                 showMessage('Username already exists! Please choose a different username.', 'error');
@@ -2533,5 +2533,5 @@
 
         console.log('Student-Hub loaded successfully!');
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97ae7e747234851f',t:'MTc1NzE2NzI0MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97ae8d2cc4c7851f',t:'MTc1NzE2Nzg0NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
