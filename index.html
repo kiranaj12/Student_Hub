@@ -194,6 +194,9 @@
                 <h4 class="text-blue-300 font-semibold mb-2">Demo Credentials:</h4>
                 <p class="text-blue-200 text-sm">Admin: <strong>admin</strong> / <strong>admin123</strong></p>
                 <p class="text-blue-200 text-sm">Student: <strong>rahul_kumar</strong> / <strong>student123</strong></p>
+                <button onclick="clearAllData()" class="mt-2 bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700">
+                    Clear All Data (Debug)
+                </button>
             </div>
         </div>
 
@@ -1063,8 +1066,9 @@
             
             if (savedUsers) {
                 users = JSON.parse(savedUsers);
+                console.log('Loaded existing users:', users.length);
             } else {
-                // Create sample admin
+                // Create sample admin and student
                 users = [{
                     id: 1,
                     accountType: 'admin',
@@ -1089,6 +1093,7 @@
                     dateCreated: new Date().toISOString()
                 }];
                 localStorage.setItem('users', JSON.stringify(users));
+                console.log('Created sample users:', users.length);
             }
             
             if (savedStudents) {
@@ -1587,7 +1592,7 @@
                 return;
             }
             
-            const username = usernameField.value.trim();
+            const username = usernameField.value.trim().toLowerCase(); // Normalize for comparison
             const password = passwordField.value;
             
             console.log('Login attempt for username:', username);
@@ -1598,8 +1603,8 @@
                 return;
             }
             
-            // Find user in users array (works for both admin and student)
-            const user = users.find(u => u.username === username && u.password === password);
+            // Find user in users array (case-insensitive username comparison)
+            const user = users.find(u => u.username.toLowerCase() === username && u.password === password);
             console.log('User found:', user ? `Yes - ${user.accountType}` : 'No');
             
             if (user) {
@@ -1621,8 +1626,14 @@
                 usernameField.value = '';
                 passwordField.value = '';
             } else {
-                console.log('Login failed - invalid credentials');
-                showMessage('Invalid username or password!', 'error');
+                console.log('Login failed - invalid credentials for username:', username);
+                console.log('Checking all users for debug:', users.map(u => ({ 
+                    stored: u.username.toLowerCase(), 
+                    entered: username, 
+                    match: u.username.toLowerCase() === username,
+                    passwordMatch: u.password === password
+                })));
+                showMessage('Invalid username or password! Please check your credentials.', 'error');
             }
         }
 
@@ -1649,8 +1660,8 @@
                 id: Date.now(),
                 accountType: accountTypeField.value,
                 fullName: fullNameField.value.trim(),
-                username: usernameField.value.trim(),
-                email: emailField.value.trim(),
+                username: usernameField.value.trim().toLowerCase(), // Normalize username
+                email: emailField.value.trim().toLowerCase(), // Normalize email
                 phone: phoneField ? phoneField.value.trim() : '',
                 password: passwordField.value,
                 confirmPassword: confirmPasswordField.value,
@@ -1658,6 +1669,7 @@
             };
 
             console.log('Registration attempt for:', formData.username, 'Type:', formData.accountType);
+            console.log('Current users in system:', users.map(u => ({ username: u.username, email: u.email })));
 
             // Add type-specific fields
             if (formData.accountType === 'student') {
@@ -1682,17 +1694,23 @@
             // Validation
             if (!validateRegistration(formData)) return;
 
-            // Check for duplicate username
-            if (users.some(u => u.username === formData.username)) {
-                showMessage('Username already exists!', 'error');
+            // Check for duplicate username (case-insensitive)
+            const existingUsername = users.find(u => u.username.toLowerCase() === formData.username.toLowerCase());
+            if (existingUsername) {
+                console.log('Username conflict found:', existingUsername.username);
+                showMessage('Username already exists! Please choose a different username.', 'error');
                 return;
             }
 
-            // Check for duplicate email
-            if (users.some(u => u.email === formData.email)) {
-                showMessage('Email already exists!', 'error');
+            // Check for duplicate email (case-insensitive)
+            const existingEmail = users.find(u => u.email.toLowerCase() === formData.email.toLowerCase());
+            if (existingEmail) {
+                console.log('Email conflict found:', existingEmail.email);
+                showMessage('Email already exists! Please use a different email address.', 'error');
                 return;
             }
+
+            console.log('No duplicates found, proceeding with registration...');
 
             // Remove confirm password before saving
             delete formData.confirmPassword;
@@ -1723,7 +1741,7 @@
                 console.log('New student data:', studentData);
             }
             
-            showMessage('Account created successfully! You can now sign in with your credentials.', 'success');
+            showMessage(`Account created successfully! Welcome ${formData.fullName}! You can now sign in with your credentials.`, 'success');
             showAuthForm('signin');
             
             // Clear form
@@ -1735,7 +1753,7 @@
                 document.getElementById('adminFields').style.display = 'none';
             }
             
-            console.log('Registration completed successfully');
+            console.log('Registration completed successfully for:', formData.username);
         }
 
         function validateRegistration(data) {
@@ -2505,7 +2523,15 @@
             }
         }
 
+        // Debug function to clear all data
+        function clearAllData() {
+            if (confirm('Are you sure you want to clear all data? This will reset the app to initial state.')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
         console.log('Student-Hub loaded successfully!');
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97ae706257db851f',t:'MTc1NzE2NjY2NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97ae7e747234851f',t:'MTc1NzE2NzI0MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
